@@ -59,7 +59,14 @@ pipeline {
             steps {
                 dir('account-service') {
                     withSonarQubeEnv('sonar-server') {
-                        sh 'mvn sonar:sonar'
+                        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                            sh '''
+                                mvn sonar:sonar \
+                                -Dsonar.projectKey=account-service \
+                                -Dsonar.projectName=account-service \
+                                -Dsonar.login=$SONAR_TOKEN
+                            '''
+                        }
                     }
                 }
             }
