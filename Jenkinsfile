@@ -54,15 +54,18 @@ pipeline {
                 }
             }
         }
-         stage('SonarQube Scan') {
+
+        stage('SonarQube Scan - Account Service') {
             steps {
-               withSonarQubeEnv('sonar-server') {
-                    sh 'mvn sonar:sonar'
+                dir('account-service') {
+                    withSonarQubeEnv('sonar-server') {
+                        sh 'mvn sonar:sonar'
+                    }
+                }
             }
         }
-     }
+
     }
-         
 
     post {
         success {
