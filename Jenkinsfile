@@ -8,7 +8,7 @@ pipeline {
     }
 
     environment {
-        DOCKERHUB_REPO = "yourdockerhub"
+        DOCKERHUB_REPO = "nileshk96"
         BUILD_TAG = "${BUILD_NUMBER}"
     }
 
@@ -65,58 +65,55 @@ pipeline {
             }
         }
 
-        stage('SonarQube Scan - Account Service') {
-            steps {
-                dir('account-service') {
-                    withSonarQubeEnv('sonar-server') {
-                        withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                            sh '''
-                                mvn sonar:sonar \
-                                -Dsonar.projectKey=account-service \
-                                -Dsonar.login=$SONAR_TOKEN
-                            '''
-                        }
-                    }
-                }
-            }
-        }
-
-        stage('Docker Build & Push') {
+        stage('Docker Login') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
                         usernameVariable: 'USER',
                         passwordVariable: 'PASS')]) {
 
                     sh 'echo $PASS | docker login -u $USER --password-stdin'
-
-                    sh '''
-                        docker build -t $DOCKERHUB_REPO/account-service:$BUILD_TAG account-service
-                        docker build -t $DOCKERHUB_REPO/customer-service:$BUILD_TAG customer-service
-                        docker build -t $DOCKERHUB_REPO/transaction-service:$BUILD_TAG transaction-service
-                        docker build -t $DOCKERHUB_REPO/api-gateway:$BUILD_TAG api-gateway
-                        docker build -t $DOCKERHUB_REPO/eureka-server:$BUILD_TAG eureka-server
-
-                        docker push $DOCKERHUB_REPO/account-service:$BUILD_TAG
-                        docker push $DOCKERHUB_REPO/customer-service:$BUILD_TAG
-                        docker push $DOCKERHUB_REPO/transaction-service:$BUILD_TAG
-                        docker push $DOCKERHUB_REPO/api-gateway:$BUILD_TAG
-                        docker push $DOCKERHUB_REPO/eureka-server:$BUILD_TAG
-                    '''
                 }
             }
         }
 
+        stage('Build Docker Images') {
+            steps {
+                sh '''
+                    docker build -t $DOCKERHUB_REPO/account-service:$BUILD_TAG account-service
+                    docker build -t $DOCKERHUB_REPO/customer-service:$BUILD_TAG customer-service
+                    docker build -t $DOCKERHUB_REPO/transaction-service:$BUILD_TAG transaction-service
+                    docker build -t $DOCKERHUB_REPO/api-gateway:$BUILD_TAG api-gateway
+                    docker build -t $DOCKERHUB_REPO/eureka-server:$BUILD_TAG eureka-server
+                '''
+            }
+        }
+
+        stage('Push Docker Images') {
+            steps {
+                sh '''
+                    docker push $DOCKERHUB_REPO/account-service:$BUILD_TAG
+                    docker push $DOCKERHUB_REPO/customer-service:$BUILD_TAG
+                    docker push $DOCKERHUB_REPO/transaction-service:$BUILD_TAG
+                    docker push $DOCKERHUB_REPO/api-gateway:$BUILD_TAG
+                    docker push $DOCKERHUB_REPO/eureka-server:$BUILD_TAG
+                '''
+            }
+        }
+
+        // ⚠️ Disable Deploy for now unless docker-compose exists on Jenkins machine
+        /*
         stage('Deploy') {
             steps {
                 sh 'docker compose down'
                 sh 'docker compose up -d'
             }
         }
+        */
     }
 
     post {
         success {
-            echo 'All microservices built and deployed successfully!'
+            echo 'All microservices built and Docker images pushed successfully!'
         }
         failure {
             echo 'Pipeline failed!'
